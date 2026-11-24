@@ -96,12 +96,12 @@ button.on{background:var(--blue);border-color:var(--blue);color:#fff}
 <section class="panel" id="s3" hidden>
   <h2 id="rt"></h2>
   <div class="score"><span id="tm2" style="direction:ltr;unicode-bidi:isolate"></span> <small>ثانية</small></div>
-  <div class="badge" style="color:var(--navy)">✓ الـ١٥ شكوى صح • ✗ <span id="mis"></span> غلطة</div>
+  <div class="badge" style="color:var(--navy)">عدد الغلطات: <span id="mis"></span></div>
   <p class="prize" id="prize2"></p>
   <div class="badge" id="badge"></div>
   <p class="muted" style="text-align:center">في عيادات نبض الحياة هتلاقي كل التخصصات دي في مكان واحد، ومعمل تحاليل مجهز بأحدث الأجهزة.</p>
-  <p class="cta-t">ابعتلنا نتيجتك على واتساب، وهنقولك على العروض والخصومات المتاحة، ونرشحلك الاستشارة الطبية اللي تناسبك 💙</p>
-  <a class="wa" id="wa" href="#" target="_blank" rel="noopener">اعرف العروض واحجز استشارتك</a>
+  <p class="cta-t">📲 ابعت نتيجتك على واتساب عشان نسجّلها في المسابقة، وكمان هنقولك على العروض والخصومات المتاحة ليك 💙</p>
+  <a class="wa" id="wa" href="#" target="_blank" rel="noopener">ابعت نتيجتك على واتساب وسجّلها</a>
   <a class="fbk" href="https://www.facebook.com/profile.php?id=61596187576238" target="_blank" rel="noopener">تابع صفحتنا على فيسبوك</a>
   <p class="note" style="text-align:center">واتساب <span class="num">01043363708</span> • اتصال <span class="num">01132552954</span><br>العياط - بجوار بنك مصر القديم - أعلى معرض الصفا</p>
   <button type="button" id="again">العب تاني</button>
@@ -186,7 +186,7 @@ function missed(c){remove(c);queue.splice(Math.min(queue.length,3),0,c.d);toast(
 function finish(){running=false;cancelAnimationFrame(raf);const secs=fmt(performance.now()-t0);
  $("tm2").textContent=secs;$("mis").textContent=miss;$("rt").textContent=`برافو يا ${P.name}! 🎉`;
  $("badge").textContent=miss===0?"🏆 من غير ولا غلطة!":miss<=3?"👏 فاهم كويس جدًا":"💙 كده عرفت كل تخصص مكانه فين";
- const msg=[`السلام عليكم، خلّصت لعبة «وصّل الشكوى للتخصص» في ${secs} ثانية بـ ${miss} غلطة، وعاوز أعرف العروض والخصومات والاستشارة المناسبة ليا.`,`الاسم: ${P.name}`,`الموبايل: ${P.phone}`,`السن: ${P.age}`,`النوع: ${P.gender}`].join("\n");
+ const msg=[`السلام عليكم، عاوز أسجّل نتيجتي في مسابقة «وصّل الشكوى للتخصص».\nالوقت: ${secs} ثانية\nالغلطات: ${miss}\nوعاوز أعرف العروض والخصومات المتاحة.`,`الاسم: ${P.name}`,`الموبايل: ${P.phone}`,`السن: ${P.age}`,`النوع: ${P.gender}`].join("\n");
  $("wa").href="https://wa.me/201043363708?text="+encodeURIComponent(msg);show("s3")}
 $("again").onclick=()=>start();
 </script>
