@@ -71,7 +71,7 @@ input:focus,select:focus{outline:none;border-color:var(--sky)}
 .nabd button.active{background:#FFD24D;color:var(--ink)}
 @keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.12)}30%{transform:scale(1)}45%{transform:scale(1.08)}}
 .rooms{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;min-height:250px}
-.room{position:relative;border-radius:16px;background:linear-gradient(160deg,#1E4E8C,#163C6E);border:2px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+.room{cursor:pointer;touch-action:none;position:relative;border-radius:16px;background:linear-gradient(160deg,#1E4E8C,#163C6E);border:2px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
  padding:6px;text-align:center;overflow:hidden;transition:transform .12s,border-color .2s,background .2s}
 .room .ic{font-size:22px;line-height:1}
 .room .nm{font-weight:900;font-size:15px;line-height:1.3}
@@ -217,7 +217,7 @@ const roomEls=[];
 function buildRooms(){const r=$("rm");r.innerHTML="";roomEls.length=0;
  ROOMS.forEach((m,i)=>{const d=document.createElement("div");d.className="room";d.dataset.i=i;
   d.innerHTML=`<div class="ic">${m.i}</div><div class="nm">${esc(m.n)}</div><div class="st">متاحة</div><div class="bz" style="transform:scaleX(0)"></div>`;
-  d.addEventListener("click",()=>{if(S&&S.sel!=null)assign(S.sel,i)});r.appendChild(d);roomEls.push(d)})}
+  d.addEventListener("pointerup",()=>{if(S&&S.run&&!D&&S.sel!=null)assign(S.sel,i)});r.appendChild(d);roomEls.push(d)})}
 buildRooms();
 
 function start(){
@@ -252,7 +252,7 @@ function loop(ts){
   if(S.busy[i]===0){r.classList.remove("busy");r.querySelector(".st").textContent="متاحة"}}});
  requestAnimationFrame(loop);
 }
-function removeP(p,cls){S.q=S.q.filter(x=>x!==p);if(S.sel===p.id)S.sel=null;p.el.classList.add(cls||"gone");setTimeout(()=>p.el.remove(),220)}
+function removeP(p,cls){if(D&&D.p===p)cancelDrag();S.q=S.q.filter(x=>x!==p);if(S.sel===p.id)clearSel();p.el.classList.add(cls||"gone");setTimeout(()=>p.el.remove(),220)}
 function leave(p){S.miss++;S.streak=0;addScore(-30,p.el);removeP(p);sfx.leave();toast("مريض زهق ومشي!");updMeter()}
 function addScore(v,el){S.score=Math.max(0,S.score+v);$("sc").textContent=S.score;if(el)floatAt(el,(v>0?"+":"")+v,v>0?"#7CE0A3":"#FF8A8F")}
 function floatAt(el,txt,col){const r=el.getBoundingClientRect(),f=document.createElement("div");f.className="float";f.textContent=txt;f.style.color=col;
@@ -274,23 +274,34 @@ function assign(id,ri){
  const bd=2+Math.random()*2;S.busy[ri]=bd;r._bd=bd;r.classList.add("busy");r.querySelector(".st").textContent="مشغولة";
  removeP(p);updMeter();if(S.q.length<2)S.spawnIn=Math.min(S.spawnIn,.4);
 }
-function clearSel(){S.sel=null;document.querySelectorAll(".pt.sel").forEach(e=>e.classList.remove("sel"));roomEls.forEach(r=>r.classList.remove("target"))}
+function clearSel(){S.sel=null;$("hint").textContent="اسحب المريض للعيادة";document.querySelectorAll(".pt.sel").forEach(e=>e.classList.remove("sel"));roomEls.forEach(r=>r.classList.remove("target"))}
 
+/* drag & tap: one controller on window so a lost touch never leaves a card stuck */
+let D=null;
 function bindDrag(el,p){
- let g=null,sx=0,sy=0,moved=false,hot=null;
- el.addEventListener("pointerdown",e=>{if(!S.run)return;e.preventDefault();el.setPointerCapture(e.pointerId);sx=e.clientX;sy=e.clientY;moved=false});
- el.addEventListener("pointermove",e=>{if(!el.hasPointerCapture(e.pointerId))return;
-  if(!moved&&Math.hypot(e.clientX-sx,e.clientY-sy)>8){moved=true;clearSel();g=el.cloneNode(true);g.classList.add("ghost");g.classList.remove("sel");document.body.appendChild(g);el.classList.add("drag")}
-  if(moved){g.style.left=e.clientX+"px";g.style.top=e.clientY+"px";
-   const t=document.elementFromPoint(e.clientX,e.clientY),r=t&&t.closest(".room");if(r!==hot){hot&&hot.classList.remove("hot");hot=r;hot&&hot.classList.add("hot")}}});
- const up=e=>{if(!el.hasPointerCapture||!el.hasPointerCapture(e.pointerId))return;el.releasePointerCapture(e.pointerId);
-  if(moved){g&&g.remove();g=null;el.classList.remove("drag");hot&&hot.classList.remove("hot");const r=hot;hot=null;if(r)assign(p.id,+r.dataset.i)}
-  else{const was=S.sel===p.id;clearSel();if(!was){S.sel=p.id;el.classList.add("sel");roomEls.forEach(r=>r.classList.add("target"));$("hint").textContent="دوس على العيادة"}}};
- el.addEventListener("pointerup",up);el.addEventListener("pointercancel",e=>{g&&g.remove();g=null;el.classList.remove("drag");hot&&hot.classList.remove("hot");hot=null});
+ el.addEventListener("pointerdown",e=>{if(!S.run||D)return;e.preventDefault();
+  D={p,el,id:e.pointerId,sx:e.clientX,sy:e.clientY,moved:false,hot:null,g:null}});
 }
+function dragMove(e){if(!D||e.pointerId!==D.id)return;e.preventDefault();
+ if(!D.moved&&Math.hypot(e.clientX-D.sx,e.clientY-D.sy)>10){D.moved=true;clearSel();
+  const g=D.el.cloneNode(true);g.className="pt ghost";document.body.appendChild(g);D.g=g;D.el.classList.add("drag")}
+ if(D.moved){D.g.style.left=e.clientX+"px";D.g.style.top=e.clientY+"px";
+  const t=document.elementFromPoint(e.clientX,e.clientY),r=t&&t.closest(".room");
+  if(r!==D.hot){D.hot&&D.hot.classList.remove("hot");D.hot=r;r&&r.classList.add("hot")}}}
+function cancelDrag(){if(!D)return;D.g&&D.g.remove();D.el.classList.remove("drag");D.hot&&D.hot.classList.remove("hot");D=null;
+ document.querySelectorAll(".ghost").forEach(g=>g.remove())}
+function dragEnd(e){if(!D||e.pointerId!==D.id)return;const d=D;
+ if(d.moved){const t=document.elementFromPoint(e.clientX,e.clientY),r=(t&&t.closest(".room"))||d.hot;cancelDrag();if(r)assign(d.p.id,+r.dataset.i);return}
+ cancelDrag();
+ const was=S.sel===d.p.id;clearSel();
+ if(!was&&S.q.includes(d.p)){S.sel=d.p.id;d.el.classList.add("sel");roomEls.forEach(r=>r.classList.add("target"));$("hint").textContent="دوس على العيادة"}}
+window.addEventListener("pointermove",dragMove,{passive:false});
+window.addEventListener("pointerup",dragEnd);
+window.addEventListener("pointercancel",e=>{if(D&&e.pointerId===D.id)cancelDrag()});
+window.addEventListener("blur",cancelDrag);
 
 function finish(){
- S.run=false;document.body.classList.remove("boost");clearSel();sfx.end();
+ S.run=false;cancelDrag();document.body.classList.remove("boost");clearSel();sfx.end();
  const code=vcode(P.phone,S.score,S.ok,S.bad,S.miss);
  $("fs").textContent=S.score;$("s1").textContent=S.ok;$("s2").textContent=S.bad;$("s3").textContent=S.miss;$("cd").textContent=code;
  const best=Math.max(S.score,+(store.get("nb_best")||0));store.set("nb_best",best);
@@ -302,7 +313,7 @@ function finish(){
  setTimeout(()=>show("res"),400);
 }
 $("again").onclick=()=>start();
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&S&&S.run){S.run=false;S._paused=true}else if(!document.hidden&&S&&S._paused){S._paused=false;S.run=true;S.lastTs=performance.now();requestAnimationFrame(loop)}});
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&S&&S.run){cancelDrag();S.run=false;S._paused=true}else if(!document.hidden&&S&&S._paused){S._paused=false;S.run=true;S.lastTs=performance.now();requestAnimationFrame(loop)}});
 })();
 </script>
 </body>
